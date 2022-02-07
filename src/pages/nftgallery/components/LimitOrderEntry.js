@@ -1,26 +1,29 @@
-import styled from "styled-components";
-import {ethers} from "ethers";
-import React, {useEffect, useState, useReducer} from "react";
-import { useWeb3React } from "@web3-react/core";
-import { addresses } from "../../../config/addresses";
-import { nftURI } from "../../../config/uri";
-import {MasterChefABI, ERC20Abi} from "../../../config/abis";
+import styled from "styled-components"
+import {ethers} from "ethers"
+import React, {useEffect, useState, useReducer} from "react"
+import { useWeb3React } from "@web3-react/core"
+import { addresses } from "../../../config/addresses"
+import { nftURI } from "../../../config/uri"
+import {MasterChefABI, ERC20Abi} from "../../../config/abis"
 import {NFTS} from "../../../config/nfts"
 import {POOLS} from "../../../config/pools"
 
 import axios from "axios"
-import {stopLossAbi} from "../../../config/abis";
-import {Container, Card, Button} from "react-bootstrap";
-import {writeContract, userMint} from "../../../utils/nft";
+import {stopLossAbi} from "../../../config/abis"
+import {Container, Card, Button} from "react-bootstrap"
+import {writeContract, userMint, toFixed} from "../../../utils/nft"
+import {getUserTokenBalance} from "../../../utils/fetchUserData"
 
 import {HiChevronDoubleUp, HiChevronDoubleDown} from "react-icons/hi"
 import {BiDownArrow} from "react-icons/bi"
 import {GiTwoCoins} from "react-icons/gi"
 import {FaTimes} from "react-icons/fa"
+import {FiDivide} from "react-icons/fi"
 import {HeaderButtonSecondary} from "../../vaults/index"
 import TokenSelector from "./TokenSelector"
+import OrderSelector from "./OrderSelector"
 import {EthIcon, BitcoinIcon, DollarIcon} from "../components/CreateVault"
-import {useRefresh} from "../../../utils/useRefresh";
+import {useRefresh} from "../../../utils/useRefresh"
 
 
 const MainContainer = styled.div`
@@ -30,10 +33,20 @@ const MainContainer = styled.div`
     justify-content: space-around;
 
     @media (max-width: 315px) {
+        margin-bottom: 6em;
+
         flex-direction: column;
         grid-template-columns: auto;
         grid-template-rows: auto;
     }
+    @media (max-width: 2048px) {
+        margin-bottom: 6em;
+      }
+  
+      @media (max-width: 768px) {
+        margin-bottom: 6em;
+   
+      }
 `
 
 const EntryContainer = styled.div`
@@ -56,7 +69,7 @@ const CardContentContainer = styled.div`
 const FormContainer = styled.div`
     display: grid;
     grid-auto-rows: auto;
-    row-gap: 12px;
+    row-gap: 0.25em;
 `
 const TitleContainer = styled.div`
     padding: 1rem 1.25rem 0.5rem;
@@ -126,14 +139,14 @@ const TitleButtonGrid = styled.div`
     grid-auto-flow: column;
     overflow: auto;
 `
-const SellButton = styled.a`
+const SellButtonLink = styled.a`
     font-size: 1rem;
     width: fit-content;
     padding: 8px 12px;
     border-radius: 12px;
     font-weight: 600;
     color: rgb(255, 255, 255);
-    background-color: transparent;
+    background-color: ${({isSelected}) => isSelected == true ? `rgb(44, 47, 54)` : `transparent`};
     display: flex;
     flex-flow: row nowrap;
     outline: none;
@@ -149,14 +162,14 @@ const SellButton = styled.a`
         color: rgb(255, 255, 255);
     }
 `
-const BuyButton = styled.a`
+const BuyButtonLink = styled.a`
     font-size: 1rem;
     width: fit-content;
     padding: 8px 12px;
     border-radius: 12px;
     font-weight: 600;
     color: rgb(255, 255, 255);
-    background-color: transparent;
+    background-color: ${({isSelected}) => isSelected == true ? `rgb(44, 47, 54)` : `transparent`};
     display: flex;
     flex-flow: row nowrap;
     outline: none;
@@ -269,16 +282,16 @@ const TokenDataRow = styled.div`
     justify-content: flex-end;
 `
 const TokenDataContentContainer = styled.div`
-box-sizing: border-box;
-margin: 0px;
-min-width: 0px;
-width: 100%;
-display: flex;
-padding: 0px;
--webkit-box-align: center;
-align-items: center;
--webkit-box-pack: justify;
-justify-content: space-between;
+    box-sizing: border-box;
+    margin: 0px;
+    min-width: 0px;
+    width: 100%;
+    display: flex;
+    padding: 0px;
+    -webkit-box-align: center;
+    align-items: center;
+    -webkit-box-pack: justify;
+    justify-content: space-between;
 `
 
 const TokenPriceSymbolContainer = styled.div`
@@ -331,8 +344,8 @@ const TokenValue = styled.span`
 
 
 const svgArrow = styled.svg`
-margin: 0px 0.25rem 0px 0.35rem;
-height: 35%;
+    margin: 0px 0.25rem 0px 0.35rem;
+    height: 35%;
 
 `
 
@@ -363,6 +376,7 @@ const PriceEntryInput = styled.input`
     font-weight: 500;
     outline: none;
     border: none;
+    -webkit-writing-mode: horizontal-tb !important;
     flex: 1 1 auto;
     background-color: rgb(33, 36, 41);
     font-size: 24px;
@@ -372,6 +386,9 @@ const PriceEntryInput = styled.input`
     padding: 0px;
     appearance: textfield;
     text-align: right;
+    text-rendering: auto;
+    -webkit-rtl-ordering: logical;
+    cursor: text;
 `
 const PriceCrossContainer = styled.div`
     padding: 4px;
@@ -407,6 +424,7 @@ const TokenPriceToggleContainer = styled.div`
 const SubmitButton = styled(HeaderButtonSecondary)`
     width: 100%;
     height: auto;
+    margin-top: 0px;
 `
 const TokenSelectorOverlay = styled.div`
     position: absolute;
@@ -422,14 +440,12 @@ const TokenSelectorOverlay = styled.div`
 `
 
 
-const SubmitSection = () => {
+const SubmitSection = (props) => {
     return (
         <>
             <TitleContainer>
-                <TokenPriceRow>
-
-                </TokenPriceRow>
-                <SubmitButton>{`Insufficient Amount In Balance`}</SubmitButton>
+      
+                <SubmitButton>{props.state.setSubmitButtonText}</SubmitButton>
             </TitleContainer>
         </>
     )
@@ -438,6 +454,34 @@ const SubmitSection = () => {
 
 const orderReducer = (state, action) => {
     switch (action.type) {
+        case 'orderType': {
+            return {
+                ...state,
+                orderType: action.payload,
+                orderSelectorToggle: !state.orderSelectorToggle
+            }
+        }
+        case 'orderSelectorToggle': {
+            return {
+                ...state,
+                orderSelectorToggle: !state.orderSelectorToggle
+            }
+        }
+        case 'sellSide': {
+            return {
+                ...state,
+                sell: true,
+                buy: false,
+            }
+        }
+        case 'buySide': {
+            return {
+                ...state,
+                sell: false,
+                buy: true,
+            }
+        }
+        
         case 'openTokenSelectorIn': {
             return {
                 ...state,
@@ -490,6 +534,42 @@ const orderReducer = (state, action) => {
                 marketPrice: action.payload 
             }
         }
+        case 'setLimitPrice': {
+            return {
+                ...state,
+                setLimitPrice: action.payload
+            }
+        }
+        case 'setAmountPrice': {
+            return {
+                ...state,
+                setAmountPrice: action.payload
+            }
+        }
+        case 'setBalanceOut': {
+            return {
+                ...state,
+                setBalanceOut: action.payload
+            }
+        }
+        case 'setBalanceIn': {
+            return {
+                ...state,
+                setBalanceIn: action.payload
+            }
+        }
+        case 'setSubmitButtonText': {
+            return {
+                ...state,
+                setSubmitButtonText: action.payload
+            }
+        }
+        case 'bothMarketPrices': {
+            return {
+                ...state,
+                bothMarketPrices: action.payload
+            }
+        }
        
    
     }
@@ -497,6 +577,10 @@ const orderReducer = (state, action) => {
 }
 
 const initialState = {
+    orderType: '',
+    orderSelectorToggle: false,
+    sell: true,
+    buy: false,
     openTokenSelectorIn: false,
     openTokenSelectorOut: false,
     setTokenIn: {
@@ -508,50 +592,119 @@ const initialState = {
         "logoURI": "https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2/logo.png"
         },
     setTokenOut: '',
+    setLimitPrice: '',
+    setAmountPrice: '',
     setAmountIn: '',
     setAmountOut: '',
-    marketPrice: {},
+    setBalanceIn: '',
+    setBalanceOut: '',
+    marketPrice: '',
+    bothMarketPrices: '',
+    setSubmitButtonText: 'Select a Token',
 }
 
 
 const LimitOrderEntry = (props, {openTradeWindowToggle}) => {
+    
+    const {active, account, library, connector} = useWeb3React()
     const { fastRefresh } = useRefresh()
     const [state, dispatch] = useReducer(orderReducer, initialState)
 
+    const clearOrderEntry = () => {
+        dispatch({ type: 'setLimitPrice', payload: ''})
+        dispatch({ type: 'setAmountOut', payload: ''})
+        dispatch({ type: 'setAmountIn', payload: ''})
+
+    }
+
+    const setOrderType = (_orderType) => {
+        dispatch({ type: "orderType", payload: _orderType})
+    }
+
+    const openOrderSelectorToggle = () => {
+        dispatch({ type: 'orderSelectorToggle' })
+        console.log("reached")
+    }
+
+    const setBuySide = () => {
+        clearOrderEntry()
+        dispatch({ type: 'buySide' })
+    }
+
+    const setSellSide = () => {
+        clearOrderEntry()
+        dispatch({ type: "sellSide" })
+    }
+
     const openTokenSelectorInToggle = () => {
-        dispatch({ type: 'openTokenSelectorIn'})
+        dispatch({ type: 'openTokenSelectorIn' })
         console.log("reached")
     }
 
     const openTokenSelectorOutToggle = () => {
-        dispatch({ type: 'openTokenSelectorOut'})
+        dispatch({ type: 'openTokenSelectorOut' })
         console.log("reached")
     }
 
     const setTokenIn = (_tokenData) => {
-        dispatch({ type: "setTokenIn", payload: _tokenData})
+        dispatch({ type: "setTokenIn", payload: _tokenData })
         console.log('Beans n Cocks')
     }
 
     const setAmountIn = (_amount) => {
-        dispatch({ type: "setAmountIn", payload: _amount})
+        dispatch({ type: "setAmountIn", payload: _amount })
         console.log(state)
+        setSubmitButtonText('Enter Price')
+
     }
 
     const setTokenOut = (_tokenData) => {
-        dispatch({ type: "setTokenOut", payload: _tokenData})
-        console.log('Beans n Cocks')
+        dispatch({ type: "setTokenOut", payload: _tokenData })
+        setSubmitButtonText('Enter Amount')
     }
     
     const setAmountOut = (_amount) => {
-        dispatch({ type: "setAmountOut", payload: _amount})
+        dispatch({ type: "setAmountOut", payload: _amount })
         console.log(state)
     }
 
     const setMarketPrice = (_price) => {
-        dispatch({ type: "marketPrice", payload: _price})
+        if (state.sell == true) {
+            dispatch({ type: "marketPrice", payload: parseFloat(_price.BPerA) })
+        } else if (state.buy == true) {
+            dispatch({ type: "marketPrice", payload: parseFloat(_price.APerB) })
+        }
     }
 
+    const setBothMarketPrices = (_price) => {
+        dispatch({ type: 'bothMarketPrices', payload: _price})
+    }
+
+    const setBalanceIn = (_balanceIn) => {
+        dispatch({ type: 'setBalanceIn', payload: _balanceIn})
+    }
+
+    const setBalanceOut = (_balanceOut) => {
+        dispatch({ type: 'setBalanceOut', payload: _balanceOut})
+    }
+
+
+    const setLimitPrice = (_price) => {
+        dispatch({ type: 'setLimitPrice', payload: _price })
+        setSubmitButtonText('Submit')
+
+    }
+
+    const setSubmitButtonText = (_message) => {
+        dispatch({ type: 'setSubmitButtonText', payload: _message})
+    }
+
+    const setAmountPrice = (_price) => {
+        dispatch({ type: 'setAmountPrice', payload: _price })
+        setSubmitButtonText('Enter Limit Price')
+    }
+
+    //get price from router
     useEffect( async () => {
         if (state.setTokenOut !== '' && state.setTokenIn !== '') {
             try {
@@ -559,10 +712,101 @@ const LimitOrderEntry = (props, {openTradeWindowToggle}) => {
                 const data = await axios.get(url)
                 
                 setMarketPrice(data.data)
+                setBothMarketPrices(data.data)
             } catch (err) {console.log(err)}
         }
         console.log(state)
-    }, [fastRefresh])
+    }, [fastRefresh, state.setTokenIn, state.setTokenOut, state.sell, state.buy])
+
+    //get balances
+    useEffect( async () => {
+        if (active && account && library) {
+            if (state.setTokenOut !== '' && state.setTokenIn == '') {
+                const tokenOutBalance = await getUserTokenBalance(active, library.getSigner(), account, state.setTokenOut.address, ERC20Abi)
+    
+                setBalanceOut(tokenOutBalance.float)
+            } else if (state.setTokenOut !== '' && state.setTokenIn !== '') {
+                const tokenInBalance = await getUserTokenBalance(active, library.getSigner(), account, state.setTokenIn.address, ERC20Abi)
+                const tokenOutBalance = await getUserTokenBalance(active, library.getSigner(), account, state.setTokenOut.address, ERC20Abi)
+    
+                setBalanceOut(tokenOutBalance.float)
+                setBalanceIn(tokenInBalance.float)
+            }
+            else if (state.setTokenOut == '' && state.setTokenIn !== '') {
+                const tokenInBalance = await getUserTokenBalance(active, library.getSigner(), account, state.setTokenIn.address, ERC20Abi)
+                setBalanceIn(tokenInBalance.float)
+            }
+        }
+        
+    }, [state.setTokenIn, state.setTokenOut])
+
+
+    //populate amount out when amount in and price exist
+    useEffect(() => {
+
+        if (state.sell == true) {
+            if (state.setLimitPrice !== '') {
+                const amountOutCalc = parseFloat(state.setAmountIn) * parseFloat(state.setLimitPrice)
+                setAmountOut(amountOutCalc.toString())
+            }
+        }
+        else if (state.buy == true) {
+            if (state.setLimitPrice !== '') {
+                const amountOutCalc = parseFloat(state.setAmountIn) / parseFloat(state.setLimitPrice)
+                setAmountOut(amountOutCalc.toString())
+            }
+        }
+        if (state.setAmountIn == '' && state.setLimitPrice !== '') {
+            setAmountOut('')
+        }
+    }, [state.side])
+
+    //then the reverse
+
+    useEffect(() => {
+
+        if (state.sell == true) {
+            if (state.setAmountOut !== '' && state.setAmountIn !== '') {
+                const amountInCalc = parseFloat(state.setAmountOut) / parseFloat(state.setAmountIn)
+                setLimitPrice(amountInCalc.toString())
+            }
+        }
+        else if (state.buy == true ) {
+            if (state.setAmountOut !== '' && state.setAmountIn !== '') {
+                const amountInCalc = parseFloat(state.setAmountIn) / parseFloat(state.setAmountOut)
+                setLimitPrice(amountInCalc.toString())
+            }
+        }
+        if (state.setAmountIn == '' && state.setLimitPrice !== '') {
+            setLimitPrice('')
+        }
+    }, [state.side, state.setAmountOut])
+
+    //top right price displayer
+
+    useEffect(() => {
+
+        if (state.sell == true) {
+            if (state.setAmountIn !== '' && state.marketPrice !== '') {
+                const amountOutCalc = parseFloat(state.setAmountIn) * parseFloat(state.marketPrice)
+                setAmountPrice(amountOutCalc.toString())
+                setAmountOut(amountOutCalc.toString())
+            }
+        }
+        else if (state.buy == true) {
+            if (state.setAmountIn !== '' && state.marketPrice !== '') {
+                const amountOutCalc = parseFloat(state.setAmountIn) / parseFloat(state.marketPrice)
+                setAmountPrice(amountOutCalc.toString())
+                setAmountOut(amountOutCalc.toString())
+            }
+        }
+        if (state.setAmountIn == '' && state.marketPrice !== '') {
+            setAmountPrice(state.marketPrice)
+        }
+        if (state.setAmountIn == '' && state.marketPrice == '') {
+            setAmountPrice('')
+        }
+    }, [state.setAmountIn, state.side, state.marketPrice, state.setTokenIn, state.setTokenOut])
  
 
     // const setMarketPrice = (_tokenA, _tokenB) => {
@@ -578,14 +822,21 @@ const LimitOrderEntry = (props, {openTradeWindowToggle}) => {
                         <TitleContainer>
                                 <TitleRow>
                                     <TitleTextContainer>
-                                        <TitleText>
-                                            {`Limit Order`}
-                                        </TitleText>
+                                        <OrderSelectorButton onClick={openOrderSelectorToggle}>
+                                            {
+                                            state.orderType !== ''
+                                            ?
+                                            state.orderType.name
+                                            :
+                                            `Select Order Type`
+                                            }
+                                            <BiDownArrow  style={{marginLeft: "0.2em"}}/>
+                                        </OrderSelectorButton>
                                     </TitleTextContainer>
                                     <TitleToggleContainer>
                                         <TitleButtonGrid>
-                                            <SellButton > Sell</SellButton>
-                                            <BuyButton > Buy</BuyButton>
+                                            <SellButtonLink onClick={setSellSide} isSelected={state.sell} > Sell</SellButtonLink>
+                                            <BuyButtonLink onClick={setBuySide} isSelected={state.buy}> Buy</BuyButtonLink>
                                         </TitleButtonGrid>
                                     </TitleToggleContainer>
 
@@ -600,14 +851,25 @@ const LimitOrderEntry = (props, {openTradeWindowToggle}) => {
                          />
 
 
-                        <PriceEntry />
+                        { state.sell == true 
+                        ?
+                        <FaTimes style={{justifySelf: "center", fontSize: "1.5em", paddingBottom: "0px !important", marginBottom: "0px !important", marginTop: "-1em", zIndex: "4545"}} /> 
+                        :
+                        <FiDivide style={{justifySelf: "center", fontSize: "1.5em", paddingBottom: "0px !important", marginBottom: "0px !important", marginTop: "-1em", zIndex: "4545"}} />
+                        }
+
+                        <PriceEntry state={state} setLimitPrice={setLimitPrice} />
 
                         <AmountEntry
                          state={state}
                          setAmountOut={setAmountOut}
                          side={'out'}
                          openTokenSelectorToggle={openTokenSelectorOutToggle} />
-                        <SubmitSection />
+
+                        <PriceDisplay state={state} clearOrderEntry={clearOrderEntry} />
+
+
+                        <SubmitSection state={state} />
 
                     </FormContainer>
                 </CardContentContainer>
@@ -629,6 +891,14 @@ const LimitOrderEntry = (props, {openTradeWindowToggle}) => {
                 
             
             }
+            {state.orderSelectorToggle == true &&
+                
+                <TokenSelectorOverlay>
+                    <OrderSelector setOrderType={setOrderType} state={state} openOrderSelectorToggle={openOrderSelectorToggle}/>
+                </TokenSelectorOverlay>
+                
+            
+            }
             
 
         </MainContainer>
@@ -640,10 +910,24 @@ export default LimitOrderEntry
 
 
 
-const PriceEntry = () => {
+
+
+
+
+const PriceEntry = (props) => {
+
+    const priceFilter = (e) => {
+        e.preventDefault()
+        const enteredAmount = e.target.value
+        if (enteredAmount == '' || enteredAmount.match(/^[1-9]\d*\.?\d*$/)) {
+            props.setLimitPrice(enteredAmount)
+        }   
+        }
+    
+    
     return (
         <>
-            <InputContainer style={{marginTop: "0px"}}>
+            <InputContainer >
                 <InputBox>
                     <InputRow>
                  
@@ -652,7 +936,7 @@ const PriceEntry = () => {
                             <TokenName>{`Price`}</TokenName>
                         </TokenLogoContainer>
                     
-                        <PriceEntryInput spellcheck="false" maxlength="79" minlength="1" placeholder="0.0" inputmode="decimal" autocomplete="off" pattern="^[0-9]*[.,]?[0-9]*$"></PriceEntryInput>
+                        <PriceEntryInput value={props.state.setLimitPrice} onChange={priceFilter} spellcheck="false" maxlength="79" minlength="1" placeholder="0.0" inputmode="decimal" autocomplete="off" pattern="^[0-9]*[.,]?[0-9]*$"></PriceEntryInput>
 
                     </InputRow>
                 </InputBox>
@@ -670,27 +954,48 @@ const PriceEntry = () => {
 
 
 const AmountEntry = (props) => {
+    const [useMax, setUseMax] = useState(false)
+    const [symbol, setSymbol] = useState('')
+    const [balance, setBalance] = useState('')
+
+    useEffect(() => {
+        if (props.side == 'in') {
+            if (props.state.setTokenIn !== '') {
+                const _symbol = props.state.setTokenIn.symbol
+                const _balance = props.state.setBalanceIn
+                setSymbol(_symbol)
+                setBalance(_balance)
+            }
+        } else if ( props.side == 'out') {
+            if (props.state.setTokenOut !== '') {
+                const _symbol = props.state.setTokenOut.symbol
+                const _balance = props.state.setBalanceOut
+                setSymbol(_symbol)
+                setBalance(_balance)
+            }
+        }
+    }, [props.state.setTokenIn, props.state.setTokenOut, props.state.setBalanceIn, props.state.setBalanceOut])
+ 
+    
 
     const amountFilter = (e) => {
+        e.preventDefault()
+
         const enteredAmount = e.target.value
-        const cleanedAmount = parseFloat(enteredAmount)
-        if (enteredAmount !== '' && props.side == 'in') {
-            props.setAmountIn(cleanedAmount)
-        } else if (enteredAmount !== '' && props.side=='out') {
-            props.setAmountOut(cleanedAmount)
+
+        if (props.side == 'in') {
+            if (enteredAmount == '' || enteredAmount.match(/^[1-9]\d*\.?\d*$/)) {
+                props.setAmountIn(enteredAmount)
+            } 
+        } else if (props.side == "out") {
+            if (enteredAmount == '' || enteredAmount.match(/^[1-9]\d*\.?\d*$/)) {
+                props.setAmountOut(enteredAmount)
+            }
         }
+        
     }
 
-    let symbol = ''
-    if (props.side == 'in') {
-        if (props.state.setTokenIn !== '') {
-            symbol = props.state.setTokenIn.symbol
-        }
-    } else if ( props.side == 'out') {
-        if (props.state.setTokenOut !== '') {
-            symbol = props.state.setTokenOut.symbol
-        }
-    }
+    
 
     return (
     <>
@@ -710,18 +1015,41 @@ const AmountEntry = (props) => {
                                         <BiDownArrow style={{marginLeft: "5px", fontSize: "0.69em"}} />
                                     </TokenSelectContainer>
                                 </TokenSelect>
-                                <PriceEntryInput onChange={amountFilter} spellcheck="false" maxlength="79" minlength="1" placeholder="0.0" inputmode="decimal" autocomplete="off" pattern="^[0-9]*[.,]?[0-9]*$"></PriceEntryInput>
+                               
+                                <PriceEntryInput
+                                 value={ props.side == 'in' ?  props.state.setAmountIn : props.state.setAmountOut} 
+                                 onChange={amountFilter} 
+                                 spellcheck="false" 
+                                 maxlength="79" 
+                                 minlength="1" 
+                                 placeholder="0.0" 
+                                 inputmode="decimal" 
+                                 autocomplete="off" 
+                                 pattern="^[0-9]*[.,]?[0-9]*$">
+                        
+                                 </PriceEntryInput>
+
+                                
+
+                                
                             </InputRow>
 
                             <TokenDataRow>
                                 <TokenDataContentContainer>
                                     <TokenPriceSymbolContainer>
-                                        <TokenBalanceText>Balance: {`2.3443`} {`MATIC`}</TokenBalanceText>
-                                        <TokenMax>Max</TokenMax>
+                                        <TokenBalanceText>Balance: { balance == NaN ? 0 : toFixed(balance, 4)} {symbol}</TokenBalanceText>
+                                        <TokenMax >(Max)</TokenMax>
                                     </TokenPriceSymbolContainer>
                                     
-                                    <TokenPriceContainer>$<TokenValue>{`4.343`}</TokenValue></TokenPriceContainer>
+                                    
+                                    {props.side == 'in' &&
+                                    <TokenPriceContainer>Price: $<TokenValue>{props.state.setAmountPrice !== '' ? props.state.setAmountPrice : '-'}</TokenValue></TokenPriceContainer>
 
+                                    }
+                                    {props.side == 'out' &&
+                                    <TokenPriceContainer>$<TokenValue>{`-`}</TokenValue></TokenPriceContainer>
+
+                                    }
                                 </TokenDataContentContainer>
                             </TokenDataRow>
 
@@ -730,4 +1058,150 @@ const AmountEntry = (props) => {
         </>
     )
 }
+
+
+const PriceContainer = styled.div`
+    display: flex;
+    width: 100%;
+    height: auto;
+    margin-bottom: 0px;
+    padding: 2px;
+    justify-content: space-between;
+    align-content: space-between;
+`
+
+const ClearFormContainer = styled.div`
+    display: flex;
+        align-content: space-between;
+
+`
+const ClearFormButton = styled.button`
+text-align: center;
+text-decoration: none;
+display: flex;
+flex-wrap: nowrap;
+position: relative;
+z-index: 1;
+will-change: transform;
+transition: transform 450ms ease 0s;
+transform: perspective(1px) translateZ(0px);
+-webkit-box-align: center;
+align-items: center;
+font-size: 1.2em;
+font-weight: 500;
+backdrop-filter: blur(12px) saturate(149%);
+-webkit-backdrop-filter: blur(0px) saturate(149%);
+background-color: rgba(29, 30, 32, 0.57);
+border: 1px solid rgba(255, 255, 255, 0.125);
+box-shadow: rgb(0 0 0 / 1%) 0px 0px 1px, rgb(0 0 0 / 4%) 0px 4px 8px, rgb(0 0 0 / 4%) 0px 16px 24px, rgb(0 0 0 / 1%) 0px 24px 32px;
+
+color: rgb(255, 255, 255);
+border-radius: 16px;
+
+outline: none;
+cursor: pointer;
+user-select: none;
+height: 2.8rem;
+width: initial;
+padding: 0px 8px;
+-webkit-box-pack: justify;
+justify-content: space-between;
+margin-right: 3px;
+
+
+&:hover {
+    background-color: rgb(44, 47, 54);
+}
+&:focus {
+    background-color: rgb(33, 35, 40);
+}
+`
+const RateContainer = styled.div`
+    display: flex;
+    align-content: space-between;
+`
+
+const RateSwapButton = styled(ClearFormButton)`
+text-align: center;
+text-decoration: none;
+display: flex;
+flex-wrap: nowrap;
+position: relative;
+z-index: 1;
+will-change: transform;
+transition: transform 450ms ease 0s;
+transform: perspective(1px) translateZ(0px);
+-webkit-box-align: center;
+align-items: center;
+font-size: 1.2em;
+font-weight: 500;
+backdrop-filter: blur(12px) saturate(149%);
+-webkit-backdrop-filter: blur(0px) saturate(149%);
+background-color: rgba(29, 30, 32, 0.57);
+border: 1px solid rgba(255, 255, 255, 0.125);
+box-shadow: rgb(0 0 0 / 1%) 0px 0px 1px, rgb(0 0 0 / 4%) 0px 4px 8px, rgb(0 0 0 / 4%) 0px 16px 24px, rgb(0 0 0 / 1%) 0px 24px 32px;
+
+color: rgb(255, 255, 255);
+border-radius: 16px;
+
+outline: none;
+cursor: pointer;
+user-select: none;
+height: 2.8rem;
+width: initial;
+padding: 0px 8px;
+-webkit-box-pack: justify;
+justify-content: space-between;
+margin-right: 3px;
+
+
+&:hover {
+    background-color: rgb(44, 47, 54);
+}
+&:focus {
+    background-color: rgb(33, 35, 40);
+}
+`
+const SwapText = styled.div`
+    display: flex;
+    width: 100%;
+    height: auto;
+    font-size: 0.8em;
+    align-text: center;
+`
+
+
+const OrderSelectorButton = styled(ClearFormButton)`
+
+`
+
+export const PriceDisplay = (props) => {
+    const [direction, setDirection] = useState(true)
+
+    const handleToggleDirection = () => {
+        setDirection( prev => !prev)
+    }
+
+    return (
+        <>
+        <PriceContainer>
+            <ClearFormContainer>
+                <ClearFormButton onClick={props.clearOrderEntry}>Clear</ClearFormButton>
+            </ClearFormContainer>
+            <RateContainer>
+                <RateSwapButton onClick={() => handleToggleDirection()}>
+                    { direction == true 
+                    ?
+                    <SwapText>1 {props.state.setTokenIn.symbol} = {props.state.bothMarketPrices.BPerA} {props.state.setTokenOut.symbol}</SwapText>
+                    :
+                    <SwapText>1 {props.state.setTokenOut.symbol} = {props.state.bothMarketPrices.APerB} {props.state.setTokenIn.symbol}</SwapText>
+                    }
+                </RateSwapButton>
+            </RateContainer>
+        </PriceContainer>  
+        </>
+    )
+}
+
+
 

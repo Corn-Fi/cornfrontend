@@ -4,6 +4,8 @@ import axios from "axios"
 import {ethers} from "ethers";
 import React, {useEffect, useState, useReducer} from "react";
 import { useWeb3React } from "@web3-react/core";
+import useFetchPoolData from "../../hooks/useFetchPoolData"
+
 
 //static confg
 
@@ -12,7 +14,7 @@ import { addresses } from "../../config/addresses";
 import {POOLS} from "../../config/pools";
 import {MasterChefABI, ERC20Abi} from "../../config/abis";
 import {writeContract} from "../../utils/nft";
-import {fetchPendingCob} from "../../utils/fetchUserData";
+import {fetchPendingCob, getUserTokenBalance} from "../../utils/fetchUserData";
 //Components
 import {Page} from "../../components/Page"
 import {Container, Card, Button} from "react-bootstrap";
@@ -25,6 +27,19 @@ import BackdropFilter from "react-backdrop-filter";
 
 //hooks
 import {useRefresh} from "../../utils/useRefresh";
+import useFetchBalances from "../../hooks/useFetchBalances";
+
+
+
+const size = {
+    mobileS: '320px',
+    mobileM: '375px',
+    mobileL: '425px',
+    tablet: '768px',
+    laptop: '1024px',
+    laptopL: '1440px',
+    desktop: '2560px'
+  }
 
 
 
@@ -38,14 +53,24 @@ const PoolGrid = styled(Container)`
     align-content: start;
     column-gap: 2px;
     row-gap: 4.20em;
-    margin-bottom: 25px;
 
+  
+    @media (max-width: 315px) {
+        margin-bottom: 6em;
+
+
+    }
+    @media (max-width: 2048px) {
+        margin-bottom: 11em;
+      }
+  
     @media (max-width: 768px) {
+        margin-bottom: 6em;
         flex-direction: column;
         grid-template-columns: auto;
         grid-template-rows: auto;
+   
       }
-  
 `
 const poolReducer = (state, action) => {
     switch (action.type) {
@@ -83,6 +108,12 @@ const poolReducer = (state, action) => {
                 signer: action.payload
             }
         }
+        case 'userBalances': {
+            return {
+                ...state,
+                userBalances: action.payload
+            }
+        }
         case 'ERROR': {
             return {
                 ...state,
@@ -106,6 +137,7 @@ const initialState = {
     userPoolDataLoading: true,
     poolData: [],
     userPoolData: [],
+    userBalances: [],
     allowances: [],
     masterChefContract: {},
     signer: {},
@@ -116,9 +148,10 @@ const Pools = (props) => {
    
     const {active, account, library, connector} = useWeb3React();
     const { fastRefresh } = useRefresh()
-    
-
+    const { state: poolData } = useFetchPoolData(account)
     const [state, dispatch] = useReducer(poolReducer, initialState)
+
+    
 
     useEffect( async () => {
         try {
@@ -126,6 +159,8 @@ const Pools = (props) => {
                 const data = await axios.get(`https://cornoracleapi.herokuapp.com/chef/userPoolData/${account}`)
                 dispatch({ type: 'userPoolData', payload: data.data })
                 console.log("USERDATA")
+                console.log(state)
+
             }
 
         } catch (err) {
@@ -133,15 +168,42 @@ const Pools = (props) => {
         }
 
     }, [account, active])
+
+    useEffect( async () => {
+        if (active && library && account) {
+            try {
+                const userBalancePromises = POOLS.map( (pool) => {
+                    const promise = getUserTokenBalance(
+                        active, 
+                        library.getSigner(),
+                        account,
+                        pool.tokenStakeAddress,
+                        ERC20Abi
+                        )
+                    return promise
+                })
+                const _userBalances = await Promise.all(userBalancePromises)
+                
+                dispatch({ type: "userBalances", payload: _userBalances})
+                console.log("balances")
+                console.log(_userBalances)
+    
+            } catch (err) {console.log(err)}
+        } 
+        
+    }, [account, active, library])
+
     useEffect( async () => {
         try {
             const data = await axios.get(`https://cornoracleapi.herokuapp.com/chef/poolData`)
             dispatch({ type: `poolData`, payload: data.data})
             console.log("POOLDATA")
+            console.log(state)
         } catch (err) {
             dispatch({ type: 'ERROR', payload: err })
         }
     }, [])
+
     useEffect( async () => {
         if (active && library) {
             try {
@@ -157,6 +219,7 @@ const Pools = (props) => {
                 dispatch({ type: "masterChefContract", payload: master})
                 dispatch({type: 'signer', payload: library.getSigner()})
                 console.log("MASETERRR")
+                console.log(state)
             } catch (err) {
                 console.log(err)
                 dispatch({type: 'ERROR', payload: err})
@@ -164,6 +227,8 @@ const Pools = (props) => {
         }
 
       }, [active, library])
+
+      
 
 
     
@@ -180,9 +245,12 @@ const Pools = (props) => {
                 <>
         
                 <PoolPageHeading/>
-                
+
+                    <p>
+                        {JSON.stringify(poolData, null, 2)}
+                    </p>
             
-                    <PoolGrid style={{marginBottom: "6.5em"}}>
+                    <PoolGrid >
                         {mapPoolData}
                     </PoolGrid>
            
@@ -201,7 +269,7 @@ const Pools = (props) => {
             <PoolPageHeading/>
             
       
-                <PoolGrid style={{marginBottom: "6.5em"}}>
+                <PoolGrid>
                     {mapPlaceHolderPoolData}
                 </PoolGrid>
       
