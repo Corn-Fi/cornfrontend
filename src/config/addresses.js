@@ -1,9 +1,9 @@
 export const addresses = {
     nft: "0x50139530985928873a5530780B71C51179F4B02f",
-    masterChef: "0xC71EbC899BCC111F39B2715B5d2D397E671B5bd2",
-    masterChefTest: "0xDe388a7098674B459a98025b631C99d888d914C8",
-    CobToken: "0x793AcF39c3d605d3aD042Ae01fd290a6fE489164",
-    TestCob: "0xf8c631189f782Ff38538C80E42dC895a264F3a52",
+    masterChef: "0xb4B14Aa0dfa22Cb3549de81E2657c6c026014090",
+    masterChefTest: "0x66e56a4Fdd5327D101cDE7513D522393dA9A719f",
+    CobToken: "0x648FA1E7Dd2722Ba93EC4Da99f2C32347522a37C",
+    TestCob: "0x67455aE73441AaBC4A2f22Fa7084cB215b4cDC15",
     mockToken1: "0x7DBaFf79d13A0c842777742A86aE3aCAc9817250",
     mockToken2: "0xCCd1660797fe05dAe3439568aD39D2a4DacEab0e",
     mockLP: "0xea718C7dd15C6E1F98de3ED10f50d812e39E66D2",
@@ -13,7 +13,9 @@ export const addresses = {
     VaultBase: "0x100e4c4D33E92E9463549F5C8698A67555B12b13",
     StopLoss: "0x6CA11661B0B49268CF9e9f064F1c7DC36FbF2862",
     ROUTER: "0xa5E0829CaCEd8fFDD4De3c43696c57F7D7A678ff",
-    COB: "0x793acf39c3d605d3ad042ae01fd290a6fe489164",
+    COB: "0x648FA1E7Dd2722Ba93EC4Da99f2C32347522a37C",
+    BOB: "0xBa9BA36175425C024d7986b7C3Af17b7f792e5ac",
+    multicall: "0x296915a77dCd930834274F2BACf2DB99fE6e0464",
 
     vaults: {
         controller: "0x07f53502db0e721e47BE3F01d2B8aC3D86ED9B22",
@@ -24,6 +26,24 @@ export const addresses = {
         simpleStrategy: "0xF609fa22367268553F44cB4E9802c8Bb057D55F5",
         aaveStrategy: "0x905eD8C3A3EF813490D2DAAdDf36E57a3AFC2D2F"
     },
+
+    nfts: [
+        {
+            name: "Popcorn Puke",
+            address: "0xc62266726b25c8a79100419a3850ca3856ddd0e9",
+            metadata: "https://gateway.pinata.cloud/ipfs/Qma9Wr96ztP4owdsUAgAWdHU4wsxmaGny8pPubD7psAWKm"
+        },
+        {
+            name: "I Want to Believe",
+            address: "0x1b7eab9fcb005e8b751d72fd6dbe7284e178c9f4",
+            metadataUrl: "https://gateway.pinata.cloud/ipfs/QmcL3VtkFgvhvpXXSnbq2rgSZnq5czmdTY3SbXQpd1DZSz"
+        },
+        {
+            name: "Enjoy the Show",
+            address: "0x448a6f5bc3a4074908474083e90a8dad9bbe579a",
+            metadataUrl: "https://gateway.pinata.cloud/ipfs/QmcRrU5a4n1CkjiQzoW8fmT9wSTnPWepqiZ462BmgqwxNW"
+        }
+    ],
 
     oracles: [
         {
@@ -71,7 +91,8 @@ export const addresses = {
         MATIC: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",
         MiMATIC: "0xa3Fa99A148fA48D14Ed51d610c367C61876997F1",
         DAI: "0x8f3cf7ad23cd3cadbd9735aff958023239c6a063",
-        COB: "0x793acf39c3d605d3ad042ae01fd290a6fe489164",
+        COB: "0x648FA1E7Dd2722Ba93EC4Da99f2C32347522a37C",
+        BOB: "0xBa9BA36175425C024d7986b7C3Af17b7f792e5ac",
         DINO: "0xAa9654BECca45B5BDFA5ac646c939C62b527D394",
         LINK: "0x53e0bca35ec356bd5dddfebbd1fc0fd03fabad39",
         SUSHI: "0x0b3f868e0be5597d5db7feb59e1cadbb0fdda50a",
@@ -84,7 +105,8 @@ export const addresses = {
         SNX: "0x50b728d8d964fd00c2d0aad81718b71311fef68a",
         CRV: "0x172370d5cd63279efa6d502dab29171933a610af",
         lp: {
-            COBUSDC: "0x972575f78EE1738Fc578289b1DE98e0Cd90c0119"
+            COBUSDC: "0x6a0ef6b58331ff3e6fdab1a8c0b24d664f31896a",
+            BOBUSDC: "0x463DD0cf39a4ed359568b721C3548C29355B5fA1"
         },
     },
     amTokens: [

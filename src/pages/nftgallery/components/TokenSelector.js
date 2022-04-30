@@ -20,7 +20,7 @@ const EntryContainer = styled.div`
     width: 100%;
     backdrop-filter: blur(12px) saturate(149%);
     -webkit-backdrop-filter: blur(0px) saturate(149%);
-    background-color: rgba(29, 30, 32, 0.57);
+    background-color: rgba(29, 30, 32, 0.87);
     border: 1px solid rgba(255, 255, 255, 0.125);
     box-shadow: rgb(0 0 0 / 1%) 0px 0px 1px, rgb(0 0 0 / 4%) 0px 4px 8px, rgb(0 0 0 / 4%) 0px 16px 24px, rgb(0 0 0 / 1%) 0px 24px 32px;
     border-radius: 24px;
@@ -131,6 +131,8 @@ const AMTokenContainer = styled.div`
 const AMButtonContainer = styled.div`
     display: flex;
     padding: 2px;
+    height: 100%;
+    width: 100%;
     margin: 2px 2px 2px 2px;
 `
 const AMButton = styled.button`
@@ -159,8 +161,8 @@ const AMButton = styled.button`
     outline: none;
     cursor: pointer;
     user-select: none;
-    height: 2.8rem;
-    width: initial;
+    height: 100%;
+    width: auto;
     padding: 0px 8px;
     -webkit-box-pack: justify;
     justify-content: space-between;
@@ -179,6 +181,7 @@ const ButtonContentContainer = styled.div`
     align-items: center;
     justify-content: space-around;
     width: 100%;
+    height: 100%;
 `
 const TokenSelectLogoContainer = styled.div`
     box-sizing: border-box;
@@ -263,7 +266,6 @@ export const TokenButton = (props) => {
 
     return (
         <>
-            <AMButtonContainer>
 
                 <AMButton onClick={handleTokenToggle}>
                     <ButtonContentContainer>
@@ -273,7 +275,7 @@ export const TokenButton = (props) => {
                         </TokenSelectLogoContainer>
                     </ButtonContentContainer>
                 </AMButton>
-            </AMButtonContainer>
+        
         </>
     )
 }

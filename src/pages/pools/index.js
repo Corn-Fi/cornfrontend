@@ -8,8 +8,7 @@ import useFetchPoolData from "../../hooks/useFetchPoolData"
 
 
 //static confg
-
-
+import MASTERCHEF from "../../config/build/contracts/MasterChefV2.json";
 import { addresses } from "../../config/addresses";
 import {POOLS} from "../../config/pools";
 import {MasterChefABI, ERC20Abi} from "../../config/abis";
@@ -17,18 +16,20 @@ import {writeContract} from "../../utils/nft";
 import {fetchPendingCob, getUserTokenBalance} from "../../utils/fetchUserData";
 
 //Components
-import {Page} from "../../components/Page"
 import {Container, Card, Button} from "react-bootstrap";
 import PoolCard from "./components/PoolCard";
 import PlaceholderPoolCard from "./components/PlaceholderPoolCard"
 import PoolPageHeading from "./components/PoolPageHeading"
-import BackdropFilter from "react-backdrop-filter";
+import HowToSection from "./components/HowToSection"
 
 
 
 //hooks
 import {useRefresh} from "../../utils/useRefresh";
 import useFetchBalances from "../../hooks/useFetchBalances";
+import useFetchContractWrite from '../../hooks/useFetchContractWrite';
+import useFetchPoolAllowances from "../../hooks/useFetchPoolAllowances"
+import { GiTrousers } from "react-icons/gi";
 
 
 
@@ -73,6 +74,12 @@ const PoolGrid = styled(Container)`
    
       }
 `
+
+
+   
+
+  
+
 const poolReducer = (state, action) => {
     switch (action.type) {
         case 'allowances': {
@@ -132,6 +139,7 @@ const poolReducer = (state, action) => {
 }
 
 const initialState = {
+    preLaunch: true,
     loading: true,
     masterChefLoading: true,
     poolDataLoading: true,
@@ -148,10 +156,16 @@ const initialState = {
  const Pools = (props) => {
    
         const {active, account, library, connector} = useWeb3React();
+        const [forceRefresh, setForceRefresh] = useState(false)
         const { fastRefresh } = useRefresh()
-        const { state: POOLDATA } = useFetchPoolData(account)
+        const { state: POOLDATA } = useFetchPoolData(account, forceRefresh)
         const [state, dispatch] = useReducer(poolReducer, initialState)
+        const [contract, query] = useFetchContractWrite(addresses.masterChef, MASTERCHEF["abi"])
 
+
+
+        const [trigger, setTrigger] = useState(true)
+        const [allowance] = useFetchPoolAllowances(trigger)
     
 
     
@@ -180,50 +194,31 @@ const initialState = {
         
     }, [account, active, library])
 
-   
-
-    useEffect( async () => {
-        if (active && library) {
-            try {
-            
-                const master = await writeContract(
-                    active, 
-                    library.getSigner(), 
-                    account,
-                    addresses.masterChef,
-                    MasterChefABI,
-                    )
-                
-                dispatch({ type: "masterChefContract", payload: master})
-                dispatch({type: 'signer', payload: library.getSigner()})
-                console.log("MASETERRR")
-                console.log(state)
-            } catch (err) {
-                console.log(err)
-                dispatch({type: 'ERROR', payload: err})
-            }
-        }
-
-      }, [active, library])
-
-      
 
 
+    const manualRefresh = () => {
+        console.log("BOOMHARU")
+        return setTrigger(prev => !prev)
+    }
     
 
     
-
-    //if we do have pooldata then go ahead and populate a card for each pool
-    if (POOLDATA.loading == false && library) {
+    //DEV NOTE:
+    // replace with 
+    // if (POOLDATA.loading == false && library ) {
+    //
+    //we broke this intentionally for pre-release site launch
+    if (POOLDATA.loading == false && library ) {
         const mapPoolData =  POOLDATA.allData.map((pool, index) => (
 
-            <PoolCard data={POOLDATA} state={state} signer={library.getSigner()} pid={index} key={index} pool={pool}/>
+            <PoolCard rawPoolData={POOLS} allowances={allowance} master={contract} refresh={manualRefresh} data={POOLDATA} state={state} signer={library.getSigner()} pid={index} key={index} pool={pool}/>
             ));
         return (
             <>
     
             <PoolPageHeading/>
 
+                <HowToSection />
                 
         
                 <PoolGrid >
@@ -233,16 +228,23 @@ const initialState = {
             </>
         )
 
+    //DEV NOTE:
+    // replace with 
+    // } else if (POOLDATA.loading == true || !library) {
+    //
+    //we broke this intentionally for pre-release site launch
+
     } else if (POOLDATA.loading == true || !library) {
         const mapPlaceHolderPoolData = POOLS.map( (pool) => (
-            <PlaceholderPoolCard tokenStake={pool.tokenStakeName}/>
+            <PlaceholderPoolCard data={pool} tokenStake={pool.tokenStakeName}/>
         ))
         return (
             <>
     
             <PoolPageHeading/>
             
-      
+                <HowToSection />
+
                 <PoolGrid>
                     {mapPlaceHolderPoolData}
                 </PoolGrid>
